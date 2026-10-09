@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 .DS_Store
+Thumbs.db
+node_modules/
+.venv/
+# 本地导出的备份文件不要提交（可能包含私人图片）
+*备份*.json
+image-model-compare-backup*.json
+*.zip

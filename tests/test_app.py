@@ -1,8 +1,29 @@
-import json, sys, pathlib
+"""端到端测试：用无头 Chromium 通过 file:// 打开 index.html，覆盖主要功能。
+
+运行：  pip install playwright && python -m playwright install chromium
+        python3 tests/test_app.py
+环境变量 SHOT_DIR 可指定截图输出目录（默认 docs/screenshots，并同时生成 docs/og-image.png）。
+"""
+import json, os, sys, pathlib, tempfile, struct, zlib
 from playwright.sync_api import sync_playwright
-ROOT=pathlib.Path('/workspace/image-model-compare'); SHOT=ROOT/'screenshots'
-URL='file://'+str(ROOT/'index.html')
-IM='/tmp/imgs/'; V1='/tmp/imc_export_v1.json'
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+SHOT=pathlib.Path(os.environ.get('SHOT_DIR') or ROOT/'docs'/'screenshots'); SHOT.mkdir(parents=True,exist_ok=True)
+MAKE_OG=not os.environ.get('SHOT_DIR')
+URL=(ROOT/'index.html').as_uri()
+V1=str(ROOT/'tests'/'fixtures'/'v1-export.json')
+TMP=pathlib.Path(tempfile.mkdtemp(prefix='imc-test-'))
+def png(w,h,rgb):
+    """纯 Python 生成 PNG（带斜线条纹），避免依赖 Pillow。"""
+    rows=[]
+    for y in range(h):
+        row=bytearray(b'\x00')
+        for x in range(w): row+=bytes((255,255,255)) if (x+y)%80<3 else bytes(rgb)
+        rows.append(bytes(row))
+    def ch(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+    return b'\x89PNG\r\n\x1a\n'+ch(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+ch(b'IDAT',zlib.compress(b''.join(rows)))+ch(b'IEND',b'')
+for n,w,h,c in [('GPT-Image-1_001.png',1024,1536,(200,90,60)),('Midjourney-v7_002.png',1456,816,(60,120,200))]:
+    (TMP/n).write_bytes(png(w,h,c))
+IM=str(TMP)+'/'
 errors=[]; log=[]
 def ok(c,msg):
     log.append(('PASS' if c else 'FAIL')+' '+msg)
@@ -16,23 +37,36 @@ with sync_playwright() as p:
     pg.on('pageerror',lambda e: errors.append('pageerror: '+str(e)))
     pg.on('dialog',lambda d: d.accept())
     pg.goto(URL); pg.wait_for_function('window.__ready===true'); pg.wait_for_timeout(900)
+    ok(pg.locator('.help .steps .step').count()==3,'first visit shows welcome/help with 3 steps')
+    ok('不会上传' in pg.locator('.help').inner_text(),'welcome explains local-only storage')
+    pg.screenshot(path=str(SHOT/'welcome.png'))
+    pg.locator('.modal footer [data-close]').click(); pg.wait_for_timeout(200)
+    ok(pg.locator('.help').count()==0,'welcome closes')
+    ok(pg.locator('.sample-banner [data-act=clearSamples]').count()==1,'sample-data notice with one-click clear')
+    ok(pg.locator('.side-foot a[href*="github.com/Bin0754/image-model-compare"]').count()==1,'footer GitHub link')
+    ok(pg.evaluate("document.querySelector('meta[property=\"og:image\"]').content").endswith('og-image.png'),'Open Graph tags present')
     ok(pg.locator('.card').count()==6,'sample set has 6 cards')
     ok(pg.locator('.chip.hl').count()>=3,'best-value chips highlighted in grid')
     ok(pg.locator('.card .score').count()==6 and pg.locator('.card').nth(1).locator('.score .segs i').count()==10,'10-segment score in grid captions')
     ok(pg.locator('.card').nth(1).locator('.score b').inner_text()=='9','Beta shows 9/10')
     ok('≈ ¥0.29' in pg.locator('.card').nth(1).locator('.chip').first.inner_text(),'USD cost shows RMB equivalent in grid ($0.04 ≈ ¥0.29)')
-    pg.screenshot(path=str(SHOT/'01-grid-网格视图.png'))
+    pg.mouse.move(5,5); pg.wait_for_timeout(300)
+    pg.screenshot(path=str(SHOT/'grid.png'))
+    if MAKE_OG:
+        pg.set_viewport_size({'width':1200,'height':630}); pg.wait_for_timeout(300)
+        pg.evaluate("document.querySelector('.summary').scrollIntoView()"); pg.wait_for_timeout(300)
+        pg.screenshot(path=str(ROOT/'docs'/'og-image.png')); pg.set_viewport_size({'width':1440,'height':900}); pg.evaluate("document.querySelector('#main').scrollTop=0"); pg.wait_for_timeout(200)
     # prompt collapse
     box=pg.locator('.prompt-box .clampbox').first
     ok('open' not in box.get_attribute('class') and 'short' not in box.get_attribute('class'),'prompt collapsed by default with toggle')
     hc=box.locator('.clamp').evaluate('e=>[e.clientHeight,e.scrollHeight]'); ok(hc[0]<hc[1] and hc[0]<60,'collapsed prompt clipped to ~2 lines %s'%hc)
     ok(pg.locator('.prompt-box .clampbox').count()==3,'negative prompt & notes also collapsible')
-    pg.locator('.prompt-box').screenshot(path=str(SHOT/'05-prompt-collapsed-提示词折叠.png'))
+    pg.locator('.prompt-box').screenshot(path=str(SHOT/'prompt-collapsed.png'))
     box.locator('.toggle').click(); pg.wait_for_timeout(300)
     ok('open' in box.get_attribute('class'),'toggle expands prompt')
     hc=box.locator('.clamp').evaluate('e=>[e.clientHeight,e.scrollHeight]'); ok(hc[0]>=hc[1]-1,'expanded shows full prompt')
     ok('收起' in box.locator('.toggle').inner_text(),'toggle label becomes 收起')
-    pg.locator('.prompt-box').screenshot(path=str(SHOT/'06-prompt-expanded-提示词展开.png'))
+    pg.locator('.prompt-box').screenshot(path=str(SHOT/'prompt-expanded.png'))
     box.locator('.toggle').click(); pg.wait_for_timeout(200)
     ok('open' not in box.get_attribute('class'),'toggle collapses again')
     box.locator('.clamp').click(); pg.wait_for_timeout(100)
@@ -49,7 +83,7 @@ with sync_playwright() as p:
     txt=pg.locator('.lb-panel').inner_text(); ok('步数' not in txt and '种子' not in txt and 'Seed' not in txt,'no steps/seed in info panel')
     lbp=pg.locator('.lb-panel .clampbox').first
     ok('open' not in lbp.get_attribute('class'),'lightbox prompt collapsed')
-    pg.screenshot(path=str(SHOT/'02-lightbox-大图与信息面板.png'))
+    pg.screenshot(path=str(SHOT/'lightbox.png'))
     lbp.locator('.toggle').click(); pg.wait_for_timeout(150); ok('open' in lbp.get_attribute('class'),'lightbox prompt expands')
     lbp.locator('.toggle').click()
     pg.keyboard.press('ArrowRight'); pg.wait_for_timeout(150)
@@ -65,7 +99,7 @@ with sync_playwright() as p:
     ok(pg.locator('td.hl').count()==4,'table highlights 4 best cells')
     heads=pg.locator('thead').inner_text(); ok('步数' not in heads and '种子' not in heads,'no steps/seed columns')
     ok(pg.locator('tbody tr').nth(1).locator('td.hl .score b').inner_text()=='9','best score highlighted on 10-scale')
-    pg.screenshot(path=str(SHOT/'03-table-表格对比.png'))
+    pg.screenshot(path=str(SHOT/'table.png'))
     pg.locator('th[data-sort=score]').click(); ok('Beta' in pg.locator('tbody tr').first.inner_text(),'sort by score (10-scale)')
     pg.locator('th[data-sort=cost]').click(); ok('Zeta' in pg.locator('tbody tr').first.inner_text(),'sort by cost puts $0 first')
     pg.fill('#rateInput','7.0'); pg.locator('#rateInput').dispatch_event('change'); pg.wait_for_timeout(100)
@@ -88,7 +122,7 @@ with sync_playwright() as p:
     pg.fill('#entryForm input[name=time]','28.5'); pg.fill('#entryForm textarea[name=params]','质量: high\n尺寸: 1024x1536')
     pg.locator('#scoreIn button[data-v="8"]').click()
     ok(pg.locator('#scoreIn button.on').count()==8,'10-point score input selects 8')
-    pg.locator('.modal').screenshot(path=str(SHOT/'07-entry-form-信息表单.png'))
+    pg.locator('.modal').screenshot(path=str(SHOT/'entry-form.png'))
     pg.locator('#efSaveNext').click(); pg.wait_for_timeout(200)
     ok(pg.input_value('#entryForm input[name=model]')=='Midjourney-v7','second in queue')
     pg.fill('#entryForm input[name=cost]','0.6'); pg.fill('#entryForm input[name=time]','40')
@@ -117,6 +151,7 @@ with sync_playwright() as p:
     pg.locator('.cmp .zoom-stage').first.hover(); pg.mouse.wheel(0,-400); pg.wait_for_timeout(150)
     tr=[pg.locator('.cmp .zoom-stage img').nth(i).get_attribute('style') for i in range(3)]
     ok(tr[0]==tr[1]==tr[2] and 'scale(1)' not in tr[0],'synced zoom across compare panes')
+    pg.mouse.move(5,5); pg.wait_for_timeout(200); pg.screenshot(path=str(SHOT/'compare.png'))
     pg.keyboard.press('Escape')
     pg.fill('#search','汉服'); ok(set_counts(pg)==1,'search filters sets'); pg.fill('#search','')
     # model library has no steps
@@ -140,17 +175,24 @@ with sync_playwright() as p:
     # import old v1 export -> scores doubled
     with pg.expect_file_chooser() as fc: pg.locator('#btnImport').click()
     fc.value.set_files(V1); pg.wait_for_timeout(800)
-    r=pg.evaluate("(()=>{const b=S.entries.find(e=>e.id==='sample-1');const a=S.entries.find(e=>e.id==='sample-0');return [b.score,a.score,S.entries.some(e=>'seed' in e||'steps' in e)]})()")
-    ok(r[0]==10 and r[1]==8 and r[2]==False,'v1 import: 5→10, 4→8, seed/steps dropped %s'%r)
+    r=pg.evaluate("(()=>{const g=id=>S.entries.find(e=>e.id===id).score;return [g('sample-1'),g('sample-0'),g('legacy-1'),S.entries.some(e=>'seed' in e||'steps' in e),S.models.some(m=>'steps' in m)]})()")
+    ok(r==[10,8,6,False,False],'v1 import: 5→10, 4→8, 3→6, seed/steps dropped %s'%r)
     # existing-DB migration (v1 database -> v2)
     pg.evaluate('''new Promise(res=>{const t=db.transaction(['entries','meta'],'readwrite');const es=t.objectStore('entries');
       const e=S.entries.find(x=>x.id==='sample-2');es.put({...e,score:3,seed:'42',steps:20});t.objectStore('meta').delete('schema');t.oncomplete=res})''')
     pg.reload(); pg.wait_for_function('window.__ready===true'); pg.wait_for_timeout(400)
+    ok(pg.locator('.help').count()==0,'welcome not shown again after first visit')
     r=pg.evaluate("(()=>{const e=S.entries.find(x=>x.id==='sample-2');return [e.score,'seed' in e,'steps' in e]})()")
     ok(r==[6,False,False],'old IndexedDB migrated on load: 3→6, seed/steps removed %s'%r)
     ok(set_counts(pg)==3,'persisted after reload: 3 sets (v2 import + merged v1 import)')
     imgok=pg.evaluate('Promise.all([...document.querySelectorAll(".thumb img")].map(i=>i.decode().then(()=>i.naturalWidth>0).catch(()=>false)))')
     ok(all(imgok),'all thumbnails decode')
+    # one-click clear sample data, then reload it from help
+    pg.locator('.set-item[data-set="sample-set"]').click(); pg.wait_for_timeout(200)
+    pg.locator('.sample-banner [data-act=clearSamples]').click(); pg.wait_for_timeout(300)
+    ok(pg.locator('.set-item[data-set="sample-set"]').count()==0 and pg.evaluate("S.entries.every(e=>e.setId!=='sample-set')"),'one-click clear removes sample set + entries')
+    pg.locator('#btnHelp').click(); pg.locator('#helpSample').click(); pg.wait_for_timeout(800)
+    ok(pg.locator('.set-item[data-set="sample-set"]').count()==1 and pg.locator('.card').count()==6,'help panel can reload sample data')
     # light theme + mobile sanity
     pg.locator('#btnTheme').click(); pg.wait_for_timeout(300); pg.screenshot(path='/tmp/light.png')
     pg.locator('#btnTheme').click()

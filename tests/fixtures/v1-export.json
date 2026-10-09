@@ -1,0 +1,119 @@
+{
+ "app": "image-model-compare",
+ "version": 1,
+ "exportedAt": "2026-10-09T05:50:00.000Z",
+ "sets": [
+  {
+   "id": "sample-set",
+   "title": "示例数据 · 雨夜霓虹街头的橘猫",
+   "prompt": "一只橘猫坐在雨夜霓虹灯下的东京小巷里（v1 旧版导出）",
+   "negative": "",
+   "date": "2026-10-08",
+   "tags": [
+    "示例数据"
+   ],
+   "notes": "",
+   "createdAt": 1,
+   "sample": true
+  },
+  {
+   "id": "legacy-set",
+   "title": "旧版对比组",
+   "prompt": "旧版 5 星制数据",
+   "negative": "",
+   "date": "2026-10-07",
+   "tags": [
+    "旧版"
+   ],
+   "notes": "",
+   "createdAt": 2
+  }
+ ],
+ "entries": [
+  {
+   "id": "sample-0",
+   "setId": "sample-set",
+   "order": 1,
+   "model": "示例模型 Alpha",
+   "provider": "示例平台 A",
+   "mime": "image/png",
+   "fileName": "a.png",
+   "width": 64,
+   "height": 64,
+   "aspect": "",
+   "cost": 0.2,
+   "currency": "¥",
+   "time": 8.4,
+   "score": 4,
+   "params": "CFG: 7",
+   "seed": "12345",
+   "steps": 30,
+   "pros": "",
+   "cons": "",
+   "notes": "",
+   "best": false,
+   "createdAt": 1,
+   "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeklEQVR4nO3PUQkAIBTAwBfMEMY2liH8OITBAtzm7PV1wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWPHYB/FJBPPKcubgAAAAASUVORK5CYII="
+  },
+  {
+   "id": "sample-1",
+   "setId": "sample-set",
+   "order": 2,
+   "model": "示例模型 Beta",
+   "provider": "示例平台 B",
+   "mime": "image/png",
+   "fileName": "b.png",
+   "width": 96,
+   "height": 54,
+   "aspect": "",
+   "cost": 0.04,
+   "currency": "$",
+   "time": 15.2,
+   "score": 5,
+   "params": "",
+   "seed": "98765",
+   "steps": null,
+   "pros": "",
+   "cons": "",
+   "notes": "",
+   "best": true,
+   "createdAt": 1,
+   "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAA2CAIAAAC3LQuFAAAAbUlEQVR4nO3QMQ0AIADAMIQhFjnIwgEPBzuaTMDSsebWpfH9IB4gQIAAAQoHCBAgQIDCAQIECBCgcIAAAQIEKBwgQIAAAQoHCBAgQIDCAQIECBCgcIAAAQIEKBwgQIAAAQoHCBAgQIDCAQL01gHO2jrwdVHhuQAAAABJRU5ErkJggg=="
+  },
+  {
+   "id": "legacy-1",
+   "setId": "legacy-set",
+   "order": 1,
+   "model": "Old Model",
+   "provider": "",
+   "mime": "image/png",
+   "fileName": "c.png",
+   "width": 32,
+   "height": 48,
+   "aspect": "",
+   "cost": 1,
+   "currency": "积分",
+   "time": 3,
+   "score": 3,
+   "params": "",
+   "seed": "",
+   "steps": 20,
+   "pros": "",
+   "cons": "",
+   "notes": "",
+   "best": false,
+   "createdAt": 1,
+   "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAwCAIAAAD/zu84AAAAL0lEQVR4nO3NQQkAAAgEsAtmEtMZ1RQ+hMH+S02fikAgEAgEAoFAIBAIBAKB4FOwnWtEapJIgkgAAAAASUVORK5CYII="
+  }
+ ],
+ "models": [
+  {
+   "name": "Old Model",
+   "provider": "",
+   "cost": 1,
+   "currency": "积分",
+   "params": "",
+   "steps": 20
+  }
+ ]
+}
