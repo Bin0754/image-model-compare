@@ -70,7 +70,7 @@ function openCompare(ids){
 
 /* ========== 模型库 ========== */
 async function saveModel(m,quiet){m={...m,name:String(m.name).trim()};if(!m.name)return;const old=modelByName(m.name);if(old&&old.name!==m.name)await idb.del('models',old.name);
- await idb.put('models',m);S.models=S.models.filter(x=>x.name.toLowerCase()!==m.name.toLowerCase());S.models.push(m);renderDatalist();if(!quiet)toast('模型库已更新')}
+ await idb.put('models',m);S.models=S.models.filter(x=>x.name.toLowerCase()!==m.name.toLowerCase());S.models.push(m);if(!quiet)toast('模型库已更新')}
 function openModelLib(){
  const m=showModal({wide:true,title:'📚 模型库',body:'<div id="libBody"></div>',footer:`<button class="btn danger" id="libWipe" style="margin-right:auto">清空全部数据…</button><button class="btn" id="libFromEntries">从已有记录收集模型</button><button class="btn primary" id="libAdd">＋ 添加模型</button>`});
  const draw=()=>{const ms=[...S.models].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans'));
@@ -79,16 +79,17 @@ function openModelLib(){
  draw();
  $('#libBody',m.el).onclick=async ev=>{const ed=ev.target.dataset.me,dl=ev.target.dataset.md;
   if(ed)editModel(modelByName(ed),draw);
-  if(dl&&confirm(`从模型库删除「${dl}」？（不会影响已有的出图记录）`)){await idb.del('models',dl);S.models=S.models.filter(x=>x.name!==dl);renderDatalist();draw()}};
+  if(dl&&confirm(`从模型库删除「${dl}」？（不会影响已有的出图记录）`)){await idb.del('models',dl);S.models=S.models.filter(x=>x.name!==dl);draw()}};
  $('#libAdd',m.el).onclick=()=>editModel(null,draw);
  $('#libFromEntries',m.el).onclick=async()=>{let n=0;for(const e of S.entries){if(e.model&&!modelByName(e.model)){await saveModel({name:e.model,provider:e.provider,cost:e.cost,currency:e.currency,params:e.params},true);n++}}draw();toast(n?`已收集 ${n} 个模型`:'没有新的模型')};
  $('#libWipe',m.el).onclick=async()=>{if(!confirm('将清空本浏览器中所有对比组、图片和模型库！建议先「导出」备份。确定继续？'))return;if(!confirm('再次确认：真的清空全部数据吗？'))return;
   for(const s of ['sets','entries','models'])await idb.clear(s);urls.forEach(u=>URL.revokeObjectURL(u));urls.clear();S.sets=[];S.entries=[];S.models=[];S.cur=null;m.close();renderAll();toast('已清空')};
 }
 function editModel(x,after){const isNew=!x;x=x||{name:'',provider:'',cost:null,currency:'$',params:''};
- const m=showModal({title:isNew?'添加模型':'编辑模型',body:`<form class="form" id="mf"><label>模型名称 *<input name="name" value="${esc(x.name)}"></label><label>平台 / 服务商<input name="provider" value="${esc(x.provider)}"></label>
+ const m=showModal({title:isNew?'添加模型':'编辑模型',body:`<form class="form" id="mf"><label>模型名称 *<input name="name" value="${esc(x.name)}" placeholder="选择预设或直接输入" autocomplete="off"></label><label>平台 / 服务商<input name="provider" value="${esc(x.provider)}"></label>
   <div class="g2"><label>默认成本（每张）<input name="cost" type="number" step="any" min="0" value="${x.cost??''}"></label><label>单位<select name="currency">${CURRENCIES.map(c=>`<option value="${c}" ${(x.currency||'$')===c?'selected':''}>${c==='$'?'$ 美元':c==='¥'?'¥ 人民币':c}</option>`).join('')}</select></label></div>
   <label>默认设置 / 参数 <small>每行「键: 值」</small><textarea name="params" rows="4">${esc(x.params)}</textarea></label></form>`,footer:`<button class="btn" data-close>取消</button><button class="btn primary" id="mfSave">保存</button>`});
+ attachModelCombo($('#mf',m.el).name,m.el,{withLib:false});
  $('#mfSave',m.el).onclick=async()=>{const d=Object.fromEntries(new FormData($('#mf',m.el)));if(!d.name.trim()){toast('请填写模型名称');return}
   if(!isNew&&d.name.trim()!==x.name){await idb.del('models',x.name);S.models=S.models.filter(y=>y.name!==x.name)}
   await saveModel({name:d.name.trim(),provider:d.provider.trim(),cost:numOrNull(d.cost),currency:d.currency,params:d.params.trim()});m.close();after&&after()};

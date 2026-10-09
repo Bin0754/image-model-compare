@@ -29,6 +29,9 @@ const modelByName=n=>S.models.find(m=>m.name.toLowerCase()===String(n||'').trim(
 
 /* ========== 格式化 ========== */
 const CURRENCIES=['$','¥','积分','其他'];
+/* 预设模型名（模型名称下拉框中优先显示；上传时也会按文件名识别） */
+const PRESET_MODELS=['gpt 2.5 sunburst','gpt 2.5 flare','nano banana 2.1','grok 2','flux 3','krea 2'];
+const normName=s=>String(s||'').toLowerCase().replace(/[\s_\-.·]+/g,'');
 function trimNum(n){return Number(n).toFixed(4).replace(/\.?0+$/,'')}
 const fmtCNY=v=>'¥'+(v>0&&v<0.01?v.toFixed(4).replace(/0+$/,''):v.toFixed(2));
 /* 成本显示（HTML）：美元自动附带人民币折算 */
@@ -140,8 +143,7 @@ function tableHTML(es,best){
  <td class="${best.score.has(e.id)?'hl':''}">${stars(e.score)}</td><td>${e.best?'🏆':''}</td>
  <td class="params">${esc(e.params||'—')}</td><td class="notes">${e.pros?`<div>👍 ${esc(e.pros)}</div>`:''}${e.cons?`<div>👎 ${esc(e.cons)}</div>`:''}${e.notes?`<div>📝 ${esc(e.notes)}</div>`:''}${!e.pros&&!e.cons&&!e.notes?'—':''}</td></tr>`).join('')}
  </tbody></table></div><p class="hint">绿色高亮 = 本组最优（最便宜 / 最快 / 分辨率最高 / 评分最高）；美元成本按上方汇率折算为人民币（≈ ¥）后比较，「积分 / 其他」不参与比较。点击任意行查看大图，点击带 ▾ 的表头可排序。</p>`}
-function renderDatalist(){$('#modelList').innerHTML=S.models.map(m=>`<option value="${esc(m.name)}">${esc(m.provider||'')}</option>`).join('')}
-function renderAll(){renderSidebar();renderMain();renderDatalist()}
+function renderAll(){renderSidebar();renderMain()}
 
 /* ========== 主区事件 ========== */
 $('#main').addEventListener('click',async ev=>{

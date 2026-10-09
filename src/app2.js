@@ -26,9 +26,11 @@ async function deleteSet(id){const s=S.sets.find(x=>x.id===id);if(!s)return;cons
 function readDims(blob){return new Promise(res=>{const u=URL.createObjectURL(blob);const im=new Image();im.onload=()=>{res([im.naturalWidth,im.naturalHeight]);URL.revokeObjectURL(u)};im.onerror=()=>{res([null,null]);URL.revokeObjectURL(u)};im.src=u})}
 function guessModel(fname){
  const base=fname.replace(/\.[a-z0-9]+$/i,'');
- const norm=s=>s.toLowerCase().replace(/[\s_\-.]+/g,'');
- const hit=[...S.models].sort((a,b)=>b.name.length-a.name.length).find(m=>norm(m.name)&&norm(base).includes(norm(m.name)));
- if(hit)return hit.name;
+ const nb=normName(base);
+ /* 模型库优先（可带出默认值），其次预设；按名称长度从长到短匹配，忽略大小写、空格、-、_、. */
+ const cands=[...S.models.map(m=>m.name),...PRESET_MODELS].filter(n=>normName(n));
+ const hit=cands.map((n,i)=>[n,i]).sort((a,b)=>normName(b[0]).length-normName(a[0]).length||a[1]-b[1]).find(([n])=>nb.includes(normName(n)));
+ if(hit){const lib=modelByName(hit[0]);const pre=PRESET_MODELS.find(p=>normName(p)===normName(hit[0]));return lib?lib.name:pre||hit[0]}
  return base.replace(/[_\-\s]+(\d{1,4}|copy|副本|final|out|output)$/i,'').replace(/_/g,' ').trim()||base}
 async function addFiles(files){
  files=[...files].filter(f=>(f.type||'').startsWith('image/')||/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(f.name));
@@ -55,6 +57,49 @@ window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();dra
  addFiles(fs)});
 window.addEventListener('paste',e=>{if(modalStack.length)return;const fs=[...(e.clipboardData?.files||[])];if(fs.length){e.preventDefault();addFiles(fs)}});
 
+/* ========== 模型名称下拉框（可选预设 / 模型库，也可自由输入） ========== */
+function modelOptions(withLib=true){const seen=new Set();const out=[];
+ const add=(name,kind,sub)=>{const k=normName(name);if(!k||seen.has(k))return;seen.add(k);out.push({name,kind,sub})};
+ PRESET_MODELS.forEach(n=>{const lib=modelByName(n);add(n,'preset',lib?.provider?'预设 · 模型库 · '+lib.provider:lib?'预设 · 模型库':'预设')});
+ if(withLib)[...S.models].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans')).forEach(m=>add(m.name,'lib','模型库'+(m.provider?' · '+m.provider:'')));
+ return out}
+function attachModelCombo(input,host,{withLib=true}={}){
+ input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-expanded','false');
+ const lid='combo-'+uid();input.setAttribute('aria-controls',lid);
+ const dd=document.createElement('div');dd.className='combo-dd';dd.id=lid;dd.setAttribute('role','listbox');dd.hidden=true;host.appendChild(dd);
+ let items=[],active=-1,filtering=false;
+ const place=()=>{const r=input.getBoundingClientRect();const below=innerHeight-r.bottom;const h=Math.min(300,dd.scrollHeight||300);
+  dd.style.left=r.left+'px';dd.style.width=Math.max(r.width,290)+'px';
+  if(below<h+12&&r.top>below){dd.style.top='';dd.style.bottom=(innerHeight-r.top+6)+'px'}else{dd.style.bottom='';dd.style.top=(r.bottom+6)+'px'}};
+ const hl=(name,q)=>{if(!q)return esc(name);const lo=name.toLowerCase();let out='',i=0;const toks=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const marks=new Array(name.length).fill(false);toks.forEach(t=>{const j=lo.indexOf(t);if(j>=0)for(let k=j;k<j+t.length;k++)marks[k]=true});
+  for(i=0;i<name.length;i++)out+=marks[i]&&!marks[i-1]?'<mark>'+esc(name[i]):esc(name[i]),out+=marks[i]&&!marks[i+1]?'</mark>':'';return out};
+ const render=()=>{const q=filtering?input.value.trim():'';const toks=q.split(/\s+/).map(normName).filter(Boolean);
+  items=modelOptions(withLib).filter(o=>toks.every(t=>normName(o.name).includes(t)));
+  const exact=items.some(o=>normName(o.name)===normName(input.value));
+  if(active>=items.length)active=items.length-1;
+  const cur=normName(input.value);
+  dd.innerHTML=(items.length?items.map((o,i)=>`<div class="combo-opt ${i===active?'active':''} ${normName(o.name)===cur?'sel':''}" role="option" id="${lid}-${i}" aria-selected="${i===active}" data-i="${i}"><span class="co-name">${hl(o.name,q)}</span><span class="co-tag ${o.kind}">${esc(o.sub)}</span></div>`).join('')
+   :'')+(q&&!exact&&active<0?`<div class="combo-custom">↵ 使用自定义名称「<b>${esc(q)}</b>」</div>`:'')+(!items.length&&!q?'<div class="combo-custom">暂无选项，可直接输入</div>':'')+`<div class="combo-foot">↑↓ 选择 · Enter 确认 · Esc 关闭 · 可直接输入任意名称</div>`;
+  input.setAttribute('aria-activedescendant',active>=0?lid+'-'+active:'');place();
+  const a=dd.querySelector('.combo-opt.active');if(a)a.scrollIntoView({block:'nearest'})};
+ const open=(filter)=>{filtering=!!filter;if(dd.hidden){dd.hidden=false;input.setAttribute('aria-expanded','true');active=filter?-1:modelOptions(withLib).findIndex(o=>normName(o.name)===normName(input.value))}render()};
+ const close=()=>{if(dd.hidden)return;dd.hidden=true;input.setAttribute('aria-expanded','false');active=-1};
+ const pick=i=>{const o=items[i];if(!o)return;input.value=o.name;close();input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))};
+ input.addEventListener('focus',()=>{if(input.dataset.skipOpen){delete input.dataset.skipOpen;return}open(false)});
+ input.addEventListener('click',()=>{if(dd.hidden)open(false)});
+ input.addEventListener('input',e=>{if(!e.isTrusted&&dd.hidden)return;active=-1;open(true)});
+ input.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(dd.hidden){open(false);return}const n=items.length;if(!n)return;active=e.key==='ArrowDown'?(active+1)%n:(active-1+n)%n;render()}
+  else if(e.key==='Enter'){if(!dd.hidden){e.preventDefault();e.stopPropagation();if(active>=0&&items[active])pick(active);else close()}}
+  else if(e.key==='Escape'){if(!dd.hidden){e.preventDefault();e.stopPropagation();close()}}
+  else if(e.key==='Tab')close()});
+ input.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==input)close()},120));
+ dd.addEventListener('mousedown',e=>{e.preventDefault();const o=e.target.closest('.combo-opt');if(o)pick(Number(o.dataset.i));else if(e.target.closest('.combo-custom'))close()});
+ dd.addEventListener('mousemove',e=>{const o=e.target.closest('.combo-opt');if(o&&Number(o.dataset.i)!==active){active=Number(o.dataset.i);$$('.combo-opt',dd).forEach((x,i)=>x.classList.toggle('active',i===active))}});
+ const rp=()=>{if(!dd.hidden)place()};window.addEventListener('resize',rp);host.addEventListener('scroll',rp,true);
+ return {open,close}}
+
 /* ========== 单张图片信息 表单 ========== */
 function openEntryForm(queue,idx=0){
  const e=S.entries.find(x=>x.id===queue[idx]);if(!e)return;
@@ -62,7 +107,7 @@ function openEntryForm(queue,idx=0){
  let newBlob=null,score=e.score||0;
  const m=showModal({wide:true,title:`填写出图信息 <span class="hint">${esc(e.fileName||'')}</span>`,body:`<div class="ef"><div class="ef-preview" title="可拖入新图片替换"><img id="efImg" src="${urlOf(e)}" alt=""></div>
  <form class="form" id="entryForm" autocomplete="off">
-  <div class="g2"><label>模型名称 *<input name="model" list="modelList" value="${esc(e.model)}" placeholder="如 GPT-Image-1 / Midjourney v7"></label><label>平台 / 服务商<input name="provider" value="${esc(e.provider)}" placeholder="如 OpenAI / 即梦 / 本地 ComfyUI"></label></div>
+  <div class="g2"><label>模型名称 *<input name="model" value="${esc(e.model)}" placeholder="选择预设或直接输入" autocomplete="off"></label><label>平台 / 服务商<input name="provider" value="${esc(e.provider)}" placeholder="如 OpenAI / 即梦 / 本地 ComfyUI"></label></div>
   <div class="g3"><label>成本（每张）<div class="cost-in"><input name="cost" type="number" step="any" min="0" value="${e.cost??''}" placeholder="0.04"><select name="currency" title="单位，默认美元">${CURRENCIES.map(c=>`<option value="${c}" ${(e.currency||'$')===c?'selected':''}>${c==='$'?'$ 美元':c==='¥'?'¥ 人民币':c}</option>`).join('')}</select></div><span class="cny-live" id="cnyLive"></span></label>
    <label>生成耗时（秒）<input name="time" type="number" step="any" min="0" value="${e.time??''}"></label>
    <label>汇率（$1 = ¥）<input name="rate" type="number" step="0.01" min="0" value="${S.rate}"></label></div>
@@ -95,6 +140,7 @@ function openEntryForm(queue,idx=0){
  f.cost.addEventListener('input',updCny);f.currency.addEventListener('change',updCny);
  f.rate.addEventListener('input',()=>{const r=Number(f.rate.value);if(r>0){S.rate=r;pref.set('rate',r)}updCny()});updCny();
  f.model.addEventListener('change',fillFromLib);
+ attachModelCombo(f.model,m.el);
  const setImg=async file=>{if(!file||!(file.type||'').startsWith('image/'))return;newBlob=file;const [w,h]=await readDims(file);f.width.value=w||'';f.height.value=h||'';f.aspect.placeholder=aspectOf(w,h);$('#efImg',m.el).src=URL.createObjectURL(file);toast('已替换图片（保存后生效）')};
  m.onDropFile=setImg;
  f.replace.addEventListener('change',()=>setImg(f.replace.files[0]));
@@ -114,7 +160,7 @@ function openEntryForm(queue,idx=0){
  const nx=$('#efSaveNext',m.el);if(nx)nx.onclick=async()=>{if(await save()){m.close();openEntryForm(queue,idx+1)}};
  $('#efDel',m.el).onclick=async()=>{if(await deleteEntry(e.id)){m.close();const rest=queue.filter(x=>x!==e.id);if(idx<rest.length)openEntryForm(rest,idx)}};
  f.addEventListener('submit',ev=>{ev.preventDefault();$('#efSave',m.el).click()});
- setTimeout(()=>{f.model.focus();f.model.select()},30);
+ setTimeout(()=>{f.model.dataset.skipOpen='1';f.model.focus();f.model.select()},30);
 }
 async function deleteEntry(id){const e=S.entries.find(x=>x.id===id);if(!e)return false;
  if(!confirm(`确定删除「${e.model}」这张图片及其信息吗？`))return false;

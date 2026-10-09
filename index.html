@@ -10,7 +10,6 @@
 <meta property="og:site_name" content="图像模型对比台">
 <meta property="og:title" content="图像模型对比台 · 同一提示词多模型出图对比">
 <meta property="og:description" content="并排对比多个 AI 图像模型的出图效果、成本、速度、分辨率与参数。纯前端，数据只存在你的浏览器里。">
-<meta property="og:url" content="https://bin0754.github.io/image-model-compare/">
 <meta property="og:image" content="https://bin0754.github.io/image-model-compare/docs/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -344,6 +343,20 @@ tr.best-row td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
 kbd{display:inline-block;min-width:22px;padding:1px 6px;margin-right:3px;border-radius:6px;border:1px solid var(--line2);border-bottom-width:2px;background:var(--surface2);font:600 11.5px var(--mono);color:var(--fg);text-align:center}
 @media (max-width:900px){.steps{grid-template-columns:1fr}}
 
+/* 模型名称下拉框 */
+.combo-dd{position:fixed;z-index:600;max-height:300px;overflow:auto;padding:6px;border-radius:16px;background:color-mix(in srgb,var(--solid) 90%,transparent);backdrop-filter:blur(20px) saturate(1.4);border:1px solid var(--line2);box-shadow:var(--shadow),0 0 0 1px rgba(255,255,255,.02) inset;animation:pop .18s var(--ease)}
+.combo-dd[hidden]{display:none}
+.combo-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:13.5px;color:var(--fg);transition:background .12s}
+.combo-opt.active{background:var(--surface3)}
+.combo-opt.sel .co-name::after{content:" ✓";color:var(--acc);font-weight:700}
+.co-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co-name mark{background:none;color:var(--acc);text-decoration:underline;text-underline-offset:3px}
+.co-tag{flex:none;font-size:11px;color:var(--fg3);border:1px solid var(--line);border-radius:999px;padding:0 8px;line-height:18px;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co-tag.preset{color:var(--acc);border-color:rgba(139,123,255,.35);background:rgba(139,123,255,.08)}
+.combo-custom{padding:8px 10px;font-size:12.5px;color:var(--fg2)}
+.combo-custom b{color:var(--fg)}
+.combo-foot{margin-top:4px;padding:6px 10px 2px;border-top:1px solid var(--line);font-size:11px;color:var(--fg3)}
+
 </style>
 </head>
 <body>
@@ -371,7 +384,6 @@ kbd{display:inline-block;min-width:22px;padding:1px 6px;margin-right:3px;border-
 <div id="toast"></div>
 <input type="file" id="addFiles" accept="image/*" multiple hidden>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
-<datalist id="modelList"></datalist>
 <script>
 'use strict';
 /* ========== 工具函数 ========== */
@@ -404,6 +416,9 @@ const modelByName=n=>S.models.find(m=>m.name.toLowerCase()===String(n||'').trim(
 
 /* ========== 格式化 ========== */
 const CURRENCIES=['$','¥','积分','其他'];
+/* 预设模型名（模型名称下拉框中优先显示；上传时也会按文件名识别） */
+const PRESET_MODELS=['gpt 2.5 sunburst','gpt 2.5 flare','nano banana 2.1','grok 2','flux 3','krea 2'];
+const normName=s=>String(s||'').toLowerCase().replace(/[\s_\-.·]+/g,'');
 function trimNum(n){return Number(n).toFixed(4).replace(/\.?0+$/,'')}
 const fmtCNY=v=>'¥'+(v>0&&v<0.01?v.toFixed(4).replace(/0+$/,''):v.toFixed(2));
 /* 成本显示（HTML）：美元自动附带人民币折算 */
@@ -515,8 +530,7 @@ function tableHTML(es,best){
  <td class="${best.score.has(e.id)?'hl':''}">${stars(e.score)}</td><td>${e.best?'🏆':''}</td>
  <td class="params">${esc(e.params||'—')}</td><td class="notes">${e.pros?`<div>👍 ${esc(e.pros)}</div>`:''}${e.cons?`<div>👎 ${esc(e.cons)}</div>`:''}${e.notes?`<div>📝 ${esc(e.notes)}</div>`:''}${!e.pros&&!e.cons&&!e.notes?'—':''}</td></tr>`).join('')}
  </tbody></table></div><p class="hint">绿色高亮 = 本组最优（最便宜 / 最快 / 分辨率最高 / 评分最高）；美元成本按上方汇率折算为人民币（≈ ¥）后比较，「积分 / 其他」不参与比较。点击任意行查看大图，点击带 ▾ 的表头可排序。</p>`}
-function renderDatalist(){$('#modelList').innerHTML=S.models.map(m=>`<option value="${esc(m.name)}">${esc(m.provider||'')}</option>`).join('')}
-function renderAll(){renderSidebar();renderMain();renderDatalist()}
+function renderAll(){renderSidebar();renderMain()}
 
 /* ========== 主区事件 ========== */
 $('#main').addEventListener('click',async ev=>{
@@ -599,9 +613,11 @@ async function deleteSet(id){const s=S.sets.find(x=>x.id===id);if(!s)return;cons
 function readDims(blob){return new Promise(res=>{const u=URL.createObjectURL(blob);const im=new Image();im.onload=()=>{res([im.naturalWidth,im.naturalHeight]);URL.revokeObjectURL(u)};im.onerror=()=>{res([null,null]);URL.revokeObjectURL(u)};im.src=u})}
 function guessModel(fname){
  const base=fname.replace(/\.[a-z0-9]+$/i,'');
- const norm=s=>s.toLowerCase().replace(/[\s_\-.]+/g,'');
- const hit=[...S.models].sort((a,b)=>b.name.length-a.name.length).find(m=>norm(m.name)&&norm(base).includes(norm(m.name)));
- if(hit)return hit.name;
+ const nb=normName(base);
+ /* 模型库优先（可带出默认值），其次预设；按名称长度从长到短匹配，忽略大小写、空格、-、_、. */
+ const cands=[...S.models.map(m=>m.name),...PRESET_MODELS].filter(n=>normName(n));
+ const hit=cands.map((n,i)=>[n,i]).sort((a,b)=>normName(b[0]).length-normName(a[0]).length||a[1]-b[1]).find(([n])=>nb.includes(normName(n)));
+ if(hit){const lib=modelByName(hit[0]);const pre=PRESET_MODELS.find(p=>normName(p)===normName(hit[0]));return lib?lib.name:pre||hit[0]}
  return base.replace(/[_\-\s]+(\d{1,4}|copy|副本|final|out|output)$/i,'').replace(/_/g,' ').trim()||base}
 async function addFiles(files){
  files=[...files].filter(f=>(f.type||'').startsWith('image/')||/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(f.name));
@@ -628,6 +644,49 @@ window.addEventListener('drop',e=>{if(!hasFiles(e))return;e.preventDefault();dra
  addFiles(fs)});
 window.addEventListener('paste',e=>{if(modalStack.length)return;const fs=[...(e.clipboardData?.files||[])];if(fs.length){e.preventDefault();addFiles(fs)}});
 
+/* ========== 模型名称下拉框（可选预设 / 模型库，也可自由输入） ========== */
+function modelOptions(withLib=true){const seen=new Set();const out=[];
+ const add=(name,kind,sub)=>{const k=normName(name);if(!k||seen.has(k))return;seen.add(k);out.push({name,kind,sub})};
+ PRESET_MODELS.forEach(n=>{const lib=modelByName(n);add(n,'preset',lib?.provider?'预设 · 模型库 · '+lib.provider:lib?'预设 · 模型库':'预设')});
+ if(withLib)[...S.models].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans')).forEach(m=>add(m.name,'lib','模型库'+(m.provider?' · '+m.provider:'')));
+ return out}
+function attachModelCombo(input,host,{withLib=true}={}){
+ input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-expanded','false');
+ const lid='combo-'+uid();input.setAttribute('aria-controls',lid);
+ const dd=document.createElement('div');dd.className='combo-dd';dd.id=lid;dd.setAttribute('role','listbox');dd.hidden=true;host.appendChild(dd);
+ let items=[],active=-1,filtering=false;
+ const place=()=>{const r=input.getBoundingClientRect();const below=innerHeight-r.bottom;const h=Math.min(300,dd.scrollHeight||300);
+  dd.style.left=r.left+'px';dd.style.width=Math.max(r.width,290)+'px';
+  if(below<h+12&&r.top>below){dd.style.top='';dd.style.bottom=(innerHeight-r.top+6)+'px'}else{dd.style.bottom='';dd.style.top=(r.bottom+6)+'px'}};
+ const hl=(name,q)=>{if(!q)return esc(name);const lo=name.toLowerCase();let out='',i=0;const toks=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const marks=new Array(name.length).fill(false);toks.forEach(t=>{const j=lo.indexOf(t);if(j>=0)for(let k=j;k<j+t.length;k++)marks[k]=true});
+  for(i=0;i<name.length;i++)out+=marks[i]&&!marks[i-1]?'<mark>'+esc(name[i]):esc(name[i]),out+=marks[i]&&!marks[i+1]?'</mark>':'';return out};
+ const render=()=>{const q=filtering?input.value.trim():'';const toks=q.split(/\s+/).map(normName).filter(Boolean);
+  items=modelOptions(withLib).filter(o=>toks.every(t=>normName(o.name).includes(t)));
+  const exact=items.some(o=>normName(o.name)===normName(input.value));
+  if(active>=items.length)active=items.length-1;
+  const cur=normName(input.value);
+  dd.innerHTML=(items.length?items.map((o,i)=>`<div class="combo-opt ${i===active?'active':''} ${normName(o.name)===cur?'sel':''}" role="option" id="${lid}-${i}" aria-selected="${i===active}" data-i="${i}"><span class="co-name">${hl(o.name,q)}</span><span class="co-tag ${o.kind}">${esc(o.sub)}</span></div>`).join('')
+   :'')+(q&&!exact&&active<0?`<div class="combo-custom">↵ 使用自定义名称「<b>${esc(q)}</b>」</div>`:'')+(!items.length&&!q?'<div class="combo-custom">暂无选项，可直接输入</div>':'')+`<div class="combo-foot">↑↓ 选择 · Enter 确认 · Esc 关闭 · 可直接输入任意名称</div>`;
+  input.setAttribute('aria-activedescendant',active>=0?lid+'-'+active:'');place();
+  const a=dd.querySelector('.combo-opt.active');if(a)a.scrollIntoView({block:'nearest'})};
+ const open=(filter)=>{filtering=!!filter;if(dd.hidden){dd.hidden=false;input.setAttribute('aria-expanded','true');active=filter?-1:modelOptions(withLib).findIndex(o=>normName(o.name)===normName(input.value))}render()};
+ const close=()=>{if(dd.hidden)return;dd.hidden=true;input.setAttribute('aria-expanded','false');active=-1};
+ const pick=i=>{const o=items[i];if(!o)return;input.value=o.name;close();input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))};
+ input.addEventListener('focus',()=>{if(input.dataset.skipOpen){delete input.dataset.skipOpen;return}open(false)});
+ input.addEventListener('click',()=>{if(dd.hidden)open(false)});
+ input.addEventListener('input',e=>{if(!e.isTrusted&&dd.hidden)return;active=-1;open(true)});
+ input.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(dd.hidden){open(false);return}const n=items.length;if(!n)return;active=e.key==='ArrowDown'?(active+1)%n:(active-1+n)%n;render()}
+  else if(e.key==='Enter'){if(!dd.hidden){e.preventDefault();e.stopPropagation();if(active>=0&&items[active])pick(active);else close()}}
+  else if(e.key==='Escape'){if(!dd.hidden){e.preventDefault();e.stopPropagation();close()}}
+  else if(e.key==='Tab')close()});
+ input.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==input)close()},120));
+ dd.addEventListener('mousedown',e=>{e.preventDefault();const o=e.target.closest('.combo-opt');if(o)pick(Number(o.dataset.i));else if(e.target.closest('.combo-custom'))close()});
+ dd.addEventListener('mousemove',e=>{const o=e.target.closest('.combo-opt');if(o&&Number(o.dataset.i)!==active){active=Number(o.dataset.i);$$('.combo-opt',dd).forEach((x,i)=>x.classList.toggle('active',i===active))}});
+ const rp=()=>{if(!dd.hidden)place()};window.addEventListener('resize',rp);host.addEventListener('scroll',rp,true);
+ return {open,close}}
+
 /* ========== 单张图片信息 表单 ========== */
 function openEntryForm(queue,idx=0){
  const e=S.entries.find(x=>x.id===queue[idx]);if(!e)return;
@@ -635,7 +694,7 @@ function openEntryForm(queue,idx=0){
  let newBlob=null,score=e.score||0;
  const m=showModal({wide:true,title:`填写出图信息 <span class="hint">${esc(e.fileName||'')}</span>`,body:`<div class="ef"><div class="ef-preview" title="可拖入新图片替换"><img id="efImg" src="${urlOf(e)}" alt=""></div>
  <form class="form" id="entryForm" autocomplete="off">
-  <div class="g2"><label>模型名称 *<input name="model" list="modelList" value="${esc(e.model)}" placeholder="如 GPT-Image-1 / Midjourney v7"></label><label>平台 / 服务商<input name="provider" value="${esc(e.provider)}" placeholder="如 OpenAI / 即梦 / 本地 ComfyUI"></label></div>
+  <div class="g2"><label>模型名称 *<input name="model" value="${esc(e.model)}" placeholder="选择预设或直接输入" autocomplete="off"></label><label>平台 / 服务商<input name="provider" value="${esc(e.provider)}" placeholder="如 OpenAI / 即梦 / 本地 ComfyUI"></label></div>
   <div class="g3"><label>成本（每张）<div class="cost-in"><input name="cost" type="number" step="any" min="0" value="${e.cost??''}" placeholder="0.04"><select name="currency" title="单位，默认美元">${CURRENCIES.map(c=>`<option value="${c}" ${(e.currency||'$')===c?'selected':''}>${c==='$'?'$ 美元':c==='¥'?'¥ 人民币':c}</option>`).join('')}</select></div><span class="cny-live" id="cnyLive"></span></label>
    <label>生成耗时（秒）<input name="time" type="number" step="any" min="0" value="${e.time??''}"></label>
    <label>汇率（$1 = ¥）<input name="rate" type="number" step="0.01" min="0" value="${S.rate}"></label></div>
@@ -668,6 +727,7 @@ function openEntryForm(queue,idx=0){
  f.cost.addEventListener('input',updCny);f.currency.addEventListener('change',updCny);
  f.rate.addEventListener('input',()=>{const r=Number(f.rate.value);if(r>0){S.rate=r;pref.set('rate',r)}updCny()});updCny();
  f.model.addEventListener('change',fillFromLib);
+ attachModelCombo(f.model,m.el);
  const setImg=async file=>{if(!file||!(file.type||'').startsWith('image/'))return;newBlob=file;const [w,h]=await readDims(file);f.width.value=w||'';f.height.value=h||'';f.aspect.placeholder=aspectOf(w,h);$('#efImg',m.el).src=URL.createObjectURL(file);toast('已替换图片（保存后生效）')};
  m.onDropFile=setImg;
  f.replace.addEventListener('change',()=>setImg(f.replace.files[0]));
@@ -687,7 +747,7 @@ function openEntryForm(queue,idx=0){
  const nx=$('#efSaveNext',m.el);if(nx)nx.onclick=async()=>{if(await save()){m.close();openEntryForm(queue,idx+1)}};
  $('#efDel',m.el).onclick=async()=>{if(await deleteEntry(e.id)){m.close();const rest=queue.filter(x=>x!==e.id);if(idx<rest.length)openEntryForm(rest,idx)}};
  f.addEventListener('submit',ev=>{ev.preventDefault();$('#efSave',m.el).click()});
- setTimeout(()=>{f.model.focus();f.model.select()},30);
+ setTimeout(()=>{f.model.dataset.skipOpen='1';f.model.focus();f.model.select()},30);
 }
 async function deleteEntry(id){const e=S.entries.find(x=>x.id===id);if(!e)return false;
  if(!confirm(`确定删除「${e.model}」这张图片及其信息吗？`))return false;
@@ -785,7 +845,7 @@ function openCompare(ids){
 
 /* ========== 模型库 ========== */
 async function saveModel(m,quiet){m={...m,name:String(m.name).trim()};if(!m.name)return;const old=modelByName(m.name);if(old&&old.name!==m.name)await idb.del('models',old.name);
- await idb.put('models',m);S.models=S.models.filter(x=>x.name.toLowerCase()!==m.name.toLowerCase());S.models.push(m);renderDatalist();if(!quiet)toast('模型库已更新')}
+ await idb.put('models',m);S.models=S.models.filter(x=>x.name.toLowerCase()!==m.name.toLowerCase());S.models.push(m);if(!quiet)toast('模型库已更新')}
 function openModelLib(){
  const m=showModal({wide:true,title:'📚 模型库',body:'<div id="libBody"></div>',footer:`<button class="btn danger" id="libWipe" style="margin-right:auto">清空全部数据…</button><button class="btn" id="libFromEntries">从已有记录收集模型</button><button class="btn primary" id="libAdd">＋ 添加模型</button>`});
  const draw=()=>{const ms=[...S.models].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans'));
@@ -794,16 +854,17 @@ function openModelLib(){
  draw();
  $('#libBody',m.el).onclick=async ev=>{const ed=ev.target.dataset.me,dl=ev.target.dataset.md;
   if(ed)editModel(modelByName(ed),draw);
-  if(dl&&confirm(`从模型库删除「${dl}」？（不会影响已有的出图记录）`)){await idb.del('models',dl);S.models=S.models.filter(x=>x.name!==dl);renderDatalist();draw()}};
+  if(dl&&confirm(`从模型库删除「${dl}」？（不会影响已有的出图记录）`)){await idb.del('models',dl);S.models=S.models.filter(x=>x.name!==dl);draw()}};
  $('#libAdd',m.el).onclick=()=>editModel(null,draw);
  $('#libFromEntries',m.el).onclick=async()=>{let n=0;for(const e of S.entries){if(e.model&&!modelByName(e.model)){await saveModel({name:e.model,provider:e.provider,cost:e.cost,currency:e.currency,params:e.params},true);n++}}draw();toast(n?`已收集 ${n} 个模型`:'没有新的模型')};
  $('#libWipe',m.el).onclick=async()=>{if(!confirm('将清空本浏览器中所有对比组、图片和模型库！建议先「导出」备份。确定继续？'))return;if(!confirm('再次确认：真的清空全部数据吗？'))return;
   for(const s of ['sets','entries','models'])await idb.clear(s);urls.forEach(u=>URL.revokeObjectURL(u));urls.clear();S.sets=[];S.entries=[];S.models=[];S.cur=null;m.close();renderAll();toast('已清空')};
 }
 function editModel(x,after){const isNew=!x;x=x||{name:'',provider:'',cost:null,currency:'$',params:''};
- const m=showModal({title:isNew?'添加模型':'编辑模型',body:`<form class="form" id="mf"><label>模型名称 *<input name="name" value="${esc(x.name)}"></label><label>平台 / 服务商<input name="provider" value="${esc(x.provider)}"></label>
+ const m=showModal({title:isNew?'添加模型':'编辑模型',body:`<form class="form" id="mf"><label>模型名称 *<input name="name" value="${esc(x.name)}" placeholder="选择预设或直接输入" autocomplete="off"></label><label>平台 / 服务商<input name="provider" value="${esc(x.provider)}"></label>
   <div class="g2"><label>默认成本（每张）<input name="cost" type="number" step="any" min="0" value="${x.cost??''}"></label><label>单位<select name="currency">${CURRENCIES.map(c=>`<option value="${c}" ${(x.currency||'$')===c?'selected':''}>${c==='$'?'$ 美元':c==='¥'?'¥ 人民币':c}</option>`).join('')}</select></label></div>
   <label>默认设置 / 参数 <small>每行「键: 值」</small><textarea name="params" rows="4">${esc(x.params)}</textarea></label></form>`,footer:`<button class="btn" data-close>取消</button><button class="btn primary" id="mfSave">保存</button>`});
+ attachModelCombo($('#mf',m.el).name,m.el,{withLib:false});
  $('#mfSave',m.el).onclick=async()=>{const d=Object.fromEntries(new FormData($('#mf',m.el)));if(!d.name.trim()){toast('请填写模型名称');return}
   if(!isNew&&d.name.trim()!==x.name){await idb.del('models',x.name);S.models=S.models.filter(y=>y.name!==x.name)}
   await saveModel({name:d.name.trim(),provider:d.provider.trim(),cost:numOrNull(d.cost),currency:d.currency,params:d.params.trim()});m.close();after&&after()};
