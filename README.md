@@ -37,7 +37,8 @@
 ## ✨ 功能
 
 - **按提示词分组**：一组 = 一段提示词（含反向提示词、日期、标签、备注），组内是各个模型的出图。
-- **批量添加**：一次拖入多张图片 / 多选 / Ctrl+V 粘贴；**文件名自动识别为模型名**，分辨率与画面比例自动读取。
+- **批量添加**：一次拖入多张图片 / 多选 / Ctrl+V 粘贴；**文件名自动识别为模型名**（含预设模型），分辨率与画面比例自动读取。
+- **模型名称下拉框**：点击即可选择预设模型（`gpt 2.5 sunburst`、`gpt 2.5 flare`、`nano banana 2.1`、`grok 2`、`flux 3`、`krea 2`）和模型库里的模型，输入可筛选，也可以直接输入任意名称。
 - **每张图的完整信息**：模型、平台、成本、生成耗时、分辨率、比例、默认设置 / 参数（`键: 值` 自动排成表格）、10 分制评分、优点、缺点、备注、「本组最佳」。
 - **成本默认美元，自动折算人民币**：`$0.04 ≈ ¥0.29`，汇率可改（默认 7.2）；也支持 ¥ / 积分 / 其他。
 - **四种视图**
@@ -74,7 +75,8 @@
 2. 进入你 Fork 出来的仓库 → **Settings** → 左侧 **Pages**；
 3. **Build and deployment** 里，Source 选 **Deploy from a branch**；Branch 选 **`main`**，目录选 **`/ (root)`**，点 **Save**；
 4. 等 1–2 分钟，页面顶部会出现网址：`https://<你的用户名>.github.io/image-model-compare/`，打开即可使用；
-5. 以后想更新到最新版：在你的仓库页面点 **Sync fork → Update branch**。
+5. **（可选）改分享卡片网址**：链接分享到微信 / Slack / X 等时显示的预览图（`og:image`）必须是绝对网址。打开仓库根目录的 `site.config.json`，把 `siteUrl` 改成你的 Pages 网址（如 `https://<你的用户名>.github.io/image-model-compare/`），然后运行 `python3 src/build.py` 并提交 `index.html`；不想装 Python 的话，也可以直接在 `index.html` 里搜索 `og-image.png`，把两处网址改掉。不改也能正常使用，只是分享预览图会指向原作者站点。
+6. 以后想更新到最新版：在你的仓库页面点 **Sync fork → Update branch**（如果改过 `site.config.json`，同步后再运行一次 `build.py`）。
 
 > 仓库根目录已带 `.nojekyll`，GitHub Pages 会原样发布静态文件。
 
@@ -95,17 +97,23 @@
 2. **添加图片**：多选，或把多张图片直接拖进页面（也可 Ctrl+V 粘贴）。
    - 文件名会预填为模型名：`GPT-Image-1_001.png` → `GPT-Image-1`；如果文件名里包含模型库中已有的模型名，会自动匹配并带出默认值。
    - 分辨率、画面比例自动读取，也可手动修改。
-3. **填写信息**：每张图逐个弹出表单——平台、成本、耗时、默认设置 / 参数（每行一条 `键: 值`）、评分、优点、缺点、备注、是否最佳。点「保存并编辑下一张」可连续填完一组。
-4. **评分（10 分制）**：点 1–10 的数字方块即可，「清除」取消；网格、表格、大图里都以 10 格评分条显示，「最高分」自动高亮。
-5. **成本与汇率**：成本默认单位是美元。输入美元价格时表单里实时显示人民币折算，网格 / 表格 / 大图里也都显示 `≈ ¥`。汇率在工具栏或表单里修改（默认 `$1 = ¥7.2`，全局生效）。积分 / 其他单位不参与「最便宜」比较。
-6. **查看与对比**
+3. **模型名称**：点击「模型名称」输入框会弹出下拉列表——先是预设模型，再是模型库中已保存的模型（自动去重）。
+   - 预设模型：`gpt 2.5 sunburst` · `gpt 2.5 flare` · `nano banana 2.1` · `grok 2` · `flux 3` · `krea 2`
+   - 输入文字可筛选（不区分大小写，可用空格分多个关键词，如 `nano 2`）；`↑` `↓` 选择、`Enter` 确认、`Esc` 关闭；也可以直接输入任意自定义名称。
+   - 选中的模型如果已在模型库中，会自动带出平台、默认成本和默认参数。
+   - 上传时文件名也会识别预设模型，忽略大小写、空格、`-`、`_`、`.`：例如 `nano-banana-2.1_01.png` → `nano banana 2.1`，`GPT_2.5_Sunburst-3.png` → `gpt 2.5 sunburst`。
+   - 想增删预设，修改 `src/app1.js` 里的 `PRESET_MODELS` 后运行 `python3 src/build.py`。
+4. **填写信息**：每张图逐个弹出表单——平台、成本、耗时、默认设置 / 参数（每行一条 `键: 值`）、评分、优点、缺点、备注、是否最佳。点「保存并编辑下一张」可连续填完一组。
+5. **评分（10 分制）**：点 1–10 的数字方块即可，「清除」取消；网格、表格、大图里都以 10 格评分条显示，「最高分」自动高亮。
+6. **成本与汇率**：成本默认单位是美元。输入美元价格时表单里实时显示人民币折算，网格 / 表格 / 大图里也都显示 `≈ ¥`。汇率在工具栏或表单里修改（默认 `$1 = ¥7.2`，全局生效）。积分 / 其他单位不参与「最便宜」比较。
+7. **查看与对比**
    - **网格 / 表格**切换在工具栏；排序在「排序」下拉或点表头；
    - **点任意图片**进入大图：滚轮缩放、拖拽平移、双击放大，`←` `→` 切换同组模型，`1` 原始尺寸，`0` 适应窗口，`Esc` 关闭；
    - **并排对比**：鼠标移到图片上，勾选左上角「对比」（2–4 张）→ 工具栏「对比所选」。
-7. **提示词折叠**：组页面和大图信息面板里的提示词默认折叠，点「展开全文」或直接点文字展开，「收起」折叠。
-8. **模型库**：表单里勾选「保存到模型库」，或在「📚 模型库」里手动添加 / 编辑。
-9. **导出 / 导入**：「⬇ 导出」生成 `图像模型对比_备份_日期.json`（图片以 base64 内嵌）；「⬆ 导入」为**合并导入**，相同记录会被覆盖。旧版（5 星制）导出的文件也能导入，评分自动 ×2。
-10. **示例数据**：首次打开会带一组「示例数据」（占位图 + 虚构数值），点横幅上的「一键清除示例数据」即可删除；想再看可在「使用帮助」里重新加载。
+8. **提示词折叠**：组页面和大图信息面板里的提示词默认折叠，点「展开全文」或直接点文字展开，「收起」折叠。
+9. **模型库**：表单里勾选「保存到模型库」，或在「📚 模型库」里手动添加 / 编辑。
+10. **导出 / 导入**：「⬇ 导出」生成 `图像模型对比_备份_日期.json`（图片以 base64 内嵌）；「⬆ 导入」为**合并导入**，相同记录会被覆盖。旧版（5 星制）导出的文件也能导入，评分自动 ×2。
+11. **示例数据**：首次打开会带一组「示例数据」（占位图 + 虚构数值），点横幅上的「一键清除示例数据」即可删除；想再看可在「使用帮助」里重新加载。
 
 ## 🔒 数据与隐私
 
@@ -123,6 +131,7 @@
 - **「最佳」能选多张吗？** 每组只能有一张，选新的会自动取消旧的。
 - **支持哪些浏览器？** 新版 Chrome / Edge / Firefox / Safari。毛玻璃效果需要较新的浏览器，老浏览器会自动退化为普通半透明背景。Safari 未经过自动化测试。
 - **能多人协作 / 云同步吗？** 目前不支持，这是一个纯本地工具；可以通过导出文件共享。
+- **分享链接的预览图为什么显示别人的站点？** 预览图网址来自 `site.config.json`，Fork 后请按「部署你自己的版本」第 5 步修改。应用内的「GitHub 开源」链接指向上游仓库，可在 `src/head.html` / `src/app3.js` 中自行修改。
 - **图片会被压缩吗？** 不会，原图原样保存，可在大图里「下载原图」。
 
 ## 🗂 项目结构
@@ -136,7 +145,7 @@ image-model-compare/
 │   ├── app1.js             #   工具函数、IndexedDB、状态、渲染（侧栏 / 网格 / 表格）
 │   ├── app2.js             #   对比组表单、添加图片、出图信息表单、缩放组件
 │   ├── app3.js             #   大图、并排对比、模型库、导出导入、数据迁移、示例数据、帮助、启动
-│   └── build.py            #   合并 src/ → index.html（--check 校验是否同步）
+│   └── build.py            #   合并 src/ → index.html，并代入 site.config.json 的网址（--check 校验是否同步）
 ├── tests/
 │   ├── test_app.py         # 端到端测试（Playwright + headless Chromium，file://）
 │   └── fixtures/v1-export.json  # 旧版（5 星制）导出文件，用于测试迁移
@@ -144,6 +153,7 @@ image-model-compare/
 │   ├── screenshots/        # README 截图（由测试自动生成）
 │   └── og-image.png        # 分享卡片图
 ├── .github/workflows/test.yml   # CI：每次 push / PR 自动跑测试
+├── site.config.json        # 站点网址（用于分享卡片 og:image），Fork 后改成自己的
 ├── .nojekyll               # 让 GitHub Pages 原样发布
 └── LICENSE                 # MIT
 ```
@@ -183,9 +193,9 @@ python3 tests/test_app.py
 **Image Model Compare** is a zero-dependency, single-file web app for comparing the outputs of multiple AI image-generation models given the **same prompt**.
 
 - **Live demo:** <https://bin0754.github.io/image-model-compare/> (UI is in Simplified Chinese)
-- **Features:** group outputs by prompt; drag-and-drop many images at once (file name → model name, resolution auto-detected); record provider, cost (USD by default, with live RMB conversion at an editable rate), generation time, resolution, aspect ratio, default settings, a **1–10 score**, pros/cons/notes and a "best" flag; grid view, table view with best-value highlighting, a lightbox with zoom/pan and a full info panel, and a synced side-by-side compare mode for 2–4 images; a model library for auto-filling defaults; JSON export/import with embedded images.
+- **Features:** a model-name combobox with presets (`gpt 2.5 sunburst`, `gpt 2.5 flare`, `nano banana 2.1`, `grok 2`, `flux 3`, `krea 2`) plus your model library, filterable and free-typing, with presets also detected from file names; group outputs by prompt; drag-and-drop many images at once (file name → model name, resolution auto-detected); record provider, cost (USD by default, with live RMB conversion at an editable rate), generation time, resolution, aspect ratio, default settings, a **1–10 score**, pros/cons/notes and a "best" flag; grid view, table view with best-value highlighting, a lightbox with zoom/pan and a full info panel, and a synced side-by-side compare mode for 2–4 images; a model library for auto-filling defaults; JSON export/import with embedded images.
 - **Privacy:** everything is stored **locally in your browser (IndexedDB)**. Nothing is uploaded and no third-party scripts are loaded. Storage is per-origin, so use Export/Import to move data between sites, browsers or machines.
 - **Run locally:** download the repo and double-click `index.html`. No server or build step needed.
-- **Deploy your own:** fork the repo → *Settings → Pages* → *Deploy from a branch*, `main` / `(root)` → Save. Or drag the folder into Netlify Drop, or import it into Vercel / Cloudflare Pages with an empty build command.
+- **Deploy your own:** fork the repo → *Settings → Pages* → *Deploy from a branch*, `main` / `(root)` → Save. Optionally set `siteUrl` in `site.config.json` to your Pages URL and run `python3 src/build.py` so link previews (`og:image`) point to your site. Or drag the folder into Netlify Drop, or import it into Vercel / Cloudflare Pages with an empty build command.
 - **Develop:** edit files in `src/`, run `python3 src/build.py`, and test with `pip install playwright && python -m playwright install chromium && python3 tests/test_app.py`.
 - **License:** MIT © 2026 Bin0754
