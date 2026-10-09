@@ -151,6 +151,31 @@ async function seedSample(){
   await idb.put('entries',e);S.entries.push(e)}
  S.cur=s.id}
 
+/* ========== 示例数据管理 / 使用帮助 ========== */
+async function clearSamples(){const ids=S.sets.filter(s=>s.sample).map(s=>s.id);if(!ids.length)return;
+ for(const e of S.entries.filter(e=>ids.includes(e.setId))){await idb.del('entries',e.id);dropUrl(e.id)}
+ for(const id of ids)await idb.del('sets',id);
+ S.entries=S.entries.filter(e=>!ids.includes(e.setId));S.sets=S.sets.filter(s=>!ids.includes(s.id));
+ if(ids.includes(S.cur)){S.cur=sortedSets()[0]?.id||null;pref.set('cur',S.cur)}S.picked.clear();renderAll();toast('已清除示例数据（可在「使用帮助」里重新加载）')}
+async function reloadSamples(){if(S.sets.some(s=>s.id==='sample-set')){selectSet('sample-set');return}await seedSample();selectSet('sample-set');toast('已加载示例数据')}
+function openHelp(first){
+ const hasSample=S.sets.some(s=>s.sample);
+ const m=showModal({wide:true,title:first?'👋 欢迎使用图像模型对比台':'使用帮助',onClose:()=>pref.set('welcomed',true),body:`<div class="help">
+  <p class="help-lead">同一个提示词交给 5 个、10 个图像模型生成后，用这里把出图<b>并排比较</b>：画质、成本、速度、分辨率、默认参数、评分，一目了然。</p>
+  <div class="steps">
+   <div class="step"><div class="step-n">1</div><h3>新建对比组</h3><p>点右上「＋ 新建对比组」，粘贴你给所有模型用的<b>同一段提示词</b>（反向提示词、标签、备注可选）。</p></div>
+   <div class="step"><div class="step-n">2</div><h3>拖入各模型的出图</h3><p>一次拖入多张图片（或点「添加图片」、Ctrl+V 粘贴）。文件名会自动填成模型名，分辨率自动读取；再逐张填写成本（默认美元，自动折算人民币）、耗时、参数和 1–10 分评分。</p></div>
+   <div class="step"><div class="step-n">3</div><h3>对比 & 结论</h3><p><b>网格</b>看图，<b>表格</b>比数据（自动高亮最便宜 / 最快 / 最高清 / 最高分），<b>点图片</b>看大图和完整信息，勾选 2–4 张<b>并排对比</b>并同步缩放。</p></div>
+  </div>
+  <div class="help-note"><span>🔒</span><div><b>数据只保存在你自己的浏览器里</b>（IndexedDB），不会上传到任何服务器。不同网址 / 不同浏览器之间的数据互不相通，清除浏览器数据会丢失。请用右上「导出」定期备份为 JSON 文件，换电脑时「导入」即可。</div></div>
+  <div class="help-keys"><span><kbd>←</kbd><kbd>→</kbd> 大图中切换模型</span><span><kbd>滚轮</kbd> 缩放</span><span><kbd>双击</kbd> 放大 / 还原</span><span><kbd>1</kbd> 原始尺寸</span><span><kbd>0</kbd> 适应窗口</span><span><kbd>Esc</kbd> 关闭</span></div>
+  <p class="hint">开源项目（MIT）· <a href="https://github.com/Bin0754/image-model-compare" target="_blank" rel="noopener">GitHub：Bin0754/image-model-compare</a> · 可 Fork 后用 GitHub Pages 部署自己的版本。</p>
+ </div>`,footer:`${hasSample?'<button class="btn" id="helpClear" style="margin-right:auto">清除示例数据</button>':'<button class="btn" id="helpSample" style="margin-right:auto">加载示例数据</button>'}<button class="btn" id="helpNew">＋ 新建对比组</button><button class="btn primary" data-close>开始使用</button>`});
+ $('#helpNew',m.el).onclick=()=>{m.close();openSetForm()};
+ const hc=$('#helpClear',m.el);if(hc)hc.onclick=()=>{m.close();clearSamples()};
+ const hs=$('#helpSample',m.el);if(hs)hs.onclick=()=>{m.close();reloadSamples()};
+}
+
 /* ========== 启动 ========== */
 (async function init(){
  try{db=await openDB()}catch(e){$('#main').innerHTML=`<div class="empty"><div class="big">⚠️</div><h2>无法打开本地数据库</h2><p>浏览器禁用了 IndexedDB（可能是无痕模式或隐私设置）。请用普通窗口的 Chrome / Edge / Firefox 打开。</p><p class="hint">${esc(e&&e.message)}</p></div>`;return}
@@ -159,6 +184,7 @@ async function seedSample(){
  else await migrateDB();
  if(!S.sets.find(s=>s.id===S.cur))S.cur=sortedSets()[0]?.id||null;
  renderAll();
+ if(!pref.get('welcomed',false))openHelp(true);
  window.__ready=true;
  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 })();

@@ -3,8 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>图像模型对比台</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🖼️%3C/text%3E%3C/svg%3E">
+<title>图像模型对比台 · 同一提示词多模型出图对比</title>
+<meta name="description" content="同一个提示词交给多个 AI 图像模型生成后，把出图并排对比：画质、成本（美元自动折算人民币）、速度、分辨率、默认参数、10 分制评分。纯前端、零依赖，数据只保存在你的浏览器里。">
+<meta name="theme-color" content="#07080c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="图像模型对比台">
+<meta property="og:title" content="图像模型对比台 · 同一提示词多模型出图对比">
+<meta property="og:description" content="并排对比多个 AI 图像模型的出图效果、成本、速度、分辨率与参数。纯前端，数据只存在你的浏览器里。">
+<meta property="og:url" content="https://bin0754.github.io/image-model-compare/">
+<meta property="og:image" content="https://bin0754.github.io/image-model-compare/docs/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="图像模型对比台 · Image Model Compare">
+<meta name="twitter:description" content="Compare outputs from multiple AI image models side by side — quality, cost, speed, resolution, settings. Zero-dependency, local-first.">
+<meta name="twitter:image" content="https://bin0754.github.io/image-model-compare/docs/og-image.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b197fc'/%3E%3Cstop offset='.5' stop-color='%237c6cff'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='13' y='17' width='17' height='30' rx='4' fill='%23fff' opacity='.95'/%3E%3Crect x='34' y='17' width='17' height='30' rx='4' fill='%23fff' opacity='.55'/%3E%3C/svg%3E">
 <style>
 :root{
  --font:"Inter","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI Variable Display","Segoe UI","PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif;
@@ -307,6 +322,28 @@ tr.best-row td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
  .g3{grid-template-columns:1fr 1fr}
 }
 
+/* 示例数据提示 / 侧栏底部 / 帮助 */
+.sample-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 2px;padding:10px 12px 10px 14px;border-radius:var(--r);border:1px solid rgba(251,191,36,.3);background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.03));font-size:13px;color:var(--fg2)}
+.sample-banner b{color:var(--warn)}
+.sb-ic{font-size:18px}
+.side-foot{display:flex;flex-direction:column;gap:4px;padding:8px 6px 0;border-top:1px solid var(--line)}
+.side-foot a,.help a{color:var(--acc);text-decoration:none;font-weight:600}
+.side-foot a:hover,.help a:hover{text-decoration:underline}
+.help-lead{font-size:15px;color:var(--fg2);margin:0 0 18px}
+.help-lead b{color:var(--fg)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 16px 14px;position:relative;overflow:hidden}
+.step::after{content:"";position:absolute;right:-30px;top:-30px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,rgba(124,108,255,.25),transparent 70%)}
+.step-n{width:30px;height:30px;border-radius:10px;background:var(--acc-grad);color:#fff;display:grid;place-items:center;font-weight:800;box-shadow:var(--acc-glow)}
+.step h3{margin:12px 0 6px;font-size:15px;letter-spacing:-.01em}
+.step p{margin:0;color:var(--fg2);font-size:13px}
+.step b{color:var(--fg)}
+.help-note{display:flex;gap:10px;margin:16px 0 12px;padding:12px 14px;border-radius:var(--r);background:var(--goodbg);border:1px solid rgba(52,211,153,.25);font-size:13px;color:var(--fg2)}
+.help-note b{color:var(--good)}
+.help-keys{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--fg3);margin-bottom:10px}
+kbd{display:inline-block;min-width:22px;padding:1px 6px;margin-right:3px;border-radius:6px;border:1px solid var(--line2);border-bottom-width:2px;background:var(--surface2);font:600 11.5px var(--mono);color:var(--fg);text-align:center}
+@media (max-width:900px){.steps{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -318,6 +355,7 @@ tr.best-row td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
   <button id="btnModels" class="btn">📚 <span class="lbl-txt">模型库</span></button>
   <button id="btnExport" class="btn" title="导出全部数据（含图片）为一个 JSON 文件">⬇ <span class="lbl-txt">导出</span></button>
   <button id="btnImport" class="btn" title="从导出的 JSON 文件导入">⬆ <span class="lbl-txt">导入</span></button>
+  <button id="btnHelp" class="btn" title="使用帮助">？<span class="lbl-txt">使用帮助</span></button>
   <button id="btnTheme" class="icon-btn" title="切换深色 / 浅色">◐</button>
 </header>
 <div class="layout">
@@ -325,7 +363,7 @@ tr.best-row td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
     <div class="side-title">对比组</div>
     <input id="search" type="search" placeholder="搜索提示词 / 标签 / 模型…">
     <div id="setList"></div>
-    <div class="hint" id="storageHint"></div>
+    <div class="side-foot"><div class="hint" id="storageHint"></div><div class="hint">🔒 数据只保存在本浏览器，不会上传 · <a href="https://github.com/Bin0754/image-model-compare" target="_blank" rel="noopener">GitHub 开源</a></div></div>
   </aside>
   <main id="main"></main>
 </div>
@@ -415,7 +453,7 @@ function renderSidebar(){
   <div class="p">${esc(s.prompt||'（无提示词）')}</div>
   <div class="s"><span>📅 ${esc(s.date||'')}</span><span>🖼 ${n} 张</span>${(s.tags||[]).filter(t=>t!=='示例数据').slice(0,3).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`}).join('')
   :`<div class="hint" style="padding:10px">${q?'没有匹配的对比组':'还没有对比组，点右上角「新建对比组」'}</div>`;
- $('#storageHint').textContent=`共 ${S.sets.length} 组 · ${S.entries.length} 张图 · 数据保存在本浏览器`;
+ $('#storageHint').textContent=`共 ${S.sets.length} 组 · ${S.entries.length} 张图`;
 }
 
 /* ========== 渲染：主区 ========== */
@@ -435,8 +473,9 @@ function renderMain(){
  if(best.score.size)sum.push(`<span class="sum-item"><span class="ic">⭐</span>最高分 <b>${names(best.score)}</b></span>`);
  m.innerHTML=`<section class="set-head">
   <div class="eyebrow">Comparison · 对比组</div>
-  <div class="row"><h1>${esc(s.title||'未命名对比组')}</h1>${s.sample?'<span class="badge warn">示例数据 · 数值均为虚构，可删除</span>':''}<div class="spacer"></div>
+  <div class="row"><h1>${esc(s.title||'未命名对比组')}</h1>${s.sample?'<span class="badge warn">示例数据</span>':''}<div class="spacer"></div>
    <button class="btn sm" data-act="editSet">✎ 编辑组信息</button><button class="btn sm danger" data-act="delSet">🗑 删除此组</button></div>
+  ${s.sample?`<div class="sample-banner"><span class="sb-ic">🧪</span><div><b>这是示例数据</b>：图片是本地绘制的占位图，模型名、价格、耗时、评分都是虚构的，只用来演示功能。</div><div class="spacer"></div><button class="btn sm" data-act="clearSamples">一键清除示例数据</button></div>`:''}
   <div class="meta-line"><span>📅 ${esc(s.date||'')}</span><span>· ${all.length} 个模型</span>${(s.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
   <div class="prompt-box"><div class="pb-row"><div class="lbl">提示词<button class="link" data-act="copyPrompt" style="padding:0;text-align:left">复制</button></div>${clampBox(s.id+':prompt',s.prompt||'（未填写）',2,'prompt')}</div>
    ${s.negative?`<div class="pb-row"><div class="lbl">反向提示词</div>${clampBox(s.id+':neg',s.negative,1,'prompt neg')}</div>`:''}
@@ -499,6 +538,7 @@ $('#main').addEventListener('click',async ev=>{
  else if(act==='copyPrompt'){const p=cur()?.prompt||'';try{await navigator.clipboard.writeText(p);toast('已复制提示词')}catch(e){window.prompt('复制下面的提示词：',p)}}
  else if(act==='compare')openCompare([...S.picked]);
  else if(act==='clearPick'){S.picked.clear();renderMain()}
+ else if(act==='clearSamples')clearSamples();
 });
 $('#main').addEventListener('change',ev=>{const t=ev.target;
  if(t.dataset.pick){const id=t.dataset.pick;if(t.checked){if(S.picked.size>=4){t.checked=false;toast('最多同时对比 4 张');return}S.picked.add(id)}else S.picked.delete(id);renderMain()}
@@ -513,6 +553,7 @@ $('#btnNewSet').onclick=()=>openSetForm();
 $('#btnModels').onclick=()=>openModelLib();
 $('#btnExport').onclick=()=>exportAll();
 $('#btnImport').onclick=()=>$('#importFile').click();
+$('#btnHelp').onclick=()=>openHelp();
 $('#btnMenu').onclick=()=>$('#sidebar').classList.toggle('open');
 $('#btnTheme').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;pref.set('theme',t)};
 document.documentElement.dataset.theme=pref.get('theme',window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
@@ -825,6 +866,31 @@ async function seedSample(){
   await idb.put('entries',e);S.entries.push(e)}
  S.cur=s.id}
 
+/* ========== 示例数据管理 / 使用帮助 ========== */
+async function clearSamples(){const ids=S.sets.filter(s=>s.sample).map(s=>s.id);if(!ids.length)return;
+ for(const e of S.entries.filter(e=>ids.includes(e.setId))){await idb.del('entries',e.id);dropUrl(e.id)}
+ for(const id of ids)await idb.del('sets',id);
+ S.entries=S.entries.filter(e=>!ids.includes(e.setId));S.sets=S.sets.filter(s=>!ids.includes(s.id));
+ if(ids.includes(S.cur)){S.cur=sortedSets()[0]?.id||null;pref.set('cur',S.cur)}S.picked.clear();renderAll();toast('已清除示例数据（可在「使用帮助」里重新加载）')}
+async function reloadSamples(){if(S.sets.some(s=>s.id==='sample-set')){selectSet('sample-set');return}await seedSample();selectSet('sample-set');toast('已加载示例数据')}
+function openHelp(first){
+ const hasSample=S.sets.some(s=>s.sample);
+ const m=showModal({wide:true,title:first?'👋 欢迎使用图像模型对比台':'使用帮助',onClose:()=>pref.set('welcomed',true),body:`<div class="help">
+  <p class="help-lead">同一个提示词交给 5 个、10 个图像模型生成后，用这里把出图<b>并排比较</b>：画质、成本、速度、分辨率、默认参数、评分，一目了然。</p>
+  <div class="steps">
+   <div class="step"><div class="step-n">1</div><h3>新建对比组</h3><p>点右上「＋ 新建对比组」，粘贴你给所有模型用的<b>同一段提示词</b>（反向提示词、标签、备注可选）。</p></div>
+   <div class="step"><div class="step-n">2</div><h3>拖入各模型的出图</h3><p>一次拖入多张图片（或点「添加图片」、Ctrl+V 粘贴）。文件名会自动填成模型名，分辨率自动读取；再逐张填写成本（默认美元，自动折算人民币）、耗时、参数和 1–10 分评分。</p></div>
+   <div class="step"><div class="step-n">3</div><h3>对比 & 结论</h3><p><b>网格</b>看图，<b>表格</b>比数据（自动高亮最便宜 / 最快 / 最高清 / 最高分），<b>点图片</b>看大图和完整信息，勾选 2–4 张<b>并排对比</b>并同步缩放。</p></div>
+  </div>
+  <div class="help-note"><span>🔒</span><div><b>数据只保存在你自己的浏览器里</b>（IndexedDB），不会上传到任何服务器。不同网址 / 不同浏览器之间的数据互不相通，清除浏览器数据会丢失。请用右上「导出」定期备份为 JSON 文件，换电脑时「导入」即可。</div></div>
+  <div class="help-keys"><span><kbd>←</kbd><kbd>→</kbd> 大图中切换模型</span><span><kbd>滚轮</kbd> 缩放</span><span><kbd>双击</kbd> 放大 / 还原</span><span><kbd>1</kbd> 原始尺寸</span><span><kbd>0</kbd> 适应窗口</span><span><kbd>Esc</kbd> 关闭</span></div>
+  <p class="hint">开源项目（MIT）· <a href="https://github.com/Bin0754/image-model-compare" target="_blank" rel="noopener">GitHub：Bin0754/image-model-compare</a> · 可 Fork 后用 GitHub Pages 部署自己的版本。</p>
+ </div>`,footer:`${hasSample?'<button class="btn" id="helpClear" style="margin-right:auto">清除示例数据</button>':'<button class="btn" id="helpSample" style="margin-right:auto">加载示例数据</button>'}<button class="btn" id="helpNew">＋ 新建对比组</button><button class="btn primary" data-close>开始使用</button>`});
+ $('#helpNew',m.el).onclick=()=>{m.close();openSetForm()};
+ const hc=$('#helpClear',m.el);if(hc)hc.onclick=()=>{m.close();clearSamples()};
+ const hs=$('#helpSample',m.el);if(hs)hs.onclick=()=>{m.close();reloadSamples()};
+}
+
 /* ========== 启动 ========== */
 (async function init(){
  try{db=await openDB()}catch(e){$('#main').innerHTML=`<div class="empty"><div class="big">⚠️</div><h2>无法打开本地数据库</h2><p>浏览器禁用了 IndexedDB（可能是无痕模式或隐私设置）。请用普通窗口的 Chrome / Edge / Firefox 打开。</p><p class="hint">${esc(e&&e.message)}</p></div>`;return}
@@ -833,6 +899,7 @@ async function seedSample(){
  else await migrateDB();
  if(!S.sets.find(s=>s.id===S.cur))S.cur=sortedSets()[0]?.id||null;
  renderAll();
+ if(!pref.get('welcomed',false))openHelp(true);
  window.__ready=true;
  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 })();

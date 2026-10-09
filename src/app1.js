@@ -78,7 +78,7 @@ function renderSidebar(){
   <div class="p">${esc(s.prompt||'（无提示词）')}</div>
   <div class="s"><span>📅 ${esc(s.date||'')}</span><span>🖼 ${n} 张</span>${(s.tags||[]).filter(t=>t!=='示例数据').slice(0,3).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`}).join('')
   :`<div class="hint" style="padding:10px">${q?'没有匹配的对比组':'还没有对比组，点右上角「新建对比组」'}</div>`;
- $('#storageHint').textContent=`共 ${S.sets.length} 组 · ${S.entries.length} 张图 · 数据保存在本浏览器`;
+ $('#storageHint').textContent=`共 ${S.sets.length} 组 · ${S.entries.length} 张图`;
 }
 
 /* ========== 渲染：主区 ========== */
@@ -98,8 +98,9 @@ function renderMain(){
  if(best.score.size)sum.push(`<span class="sum-item"><span class="ic">⭐</span>最高分 <b>${names(best.score)}</b></span>`);
  m.innerHTML=`<section class="set-head">
   <div class="eyebrow">Comparison · 对比组</div>
-  <div class="row"><h1>${esc(s.title||'未命名对比组')}</h1>${s.sample?'<span class="badge warn">示例数据 · 数值均为虚构，可删除</span>':''}<div class="spacer"></div>
+  <div class="row"><h1>${esc(s.title||'未命名对比组')}</h1>${s.sample?'<span class="badge warn">示例数据</span>':''}<div class="spacer"></div>
    <button class="btn sm" data-act="editSet">✎ 编辑组信息</button><button class="btn sm danger" data-act="delSet">🗑 删除此组</button></div>
+  ${s.sample?`<div class="sample-banner"><span class="sb-ic">🧪</span><div><b>这是示例数据</b>：图片是本地绘制的占位图，模型名、价格、耗时、评分都是虚构的，只用来演示功能。</div><div class="spacer"></div><button class="btn sm" data-act="clearSamples">一键清除示例数据</button></div>`:''}
   <div class="meta-line"><span>📅 ${esc(s.date||'')}</span><span>· ${all.length} 个模型</span>${(s.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
   <div class="prompt-box"><div class="pb-row"><div class="lbl">提示词<button class="link" data-act="copyPrompt" style="padding:0;text-align:left">复制</button></div>${clampBox(s.id+':prompt',s.prompt||'（未填写）',2,'prompt')}</div>
    ${s.negative?`<div class="pb-row"><div class="lbl">反向提示词</div>${clampBox(s.id+':neg',s.negative,1,'prompt neg')}</div>`:''}
@@ -162,6 +163,7 @@ $('#main').addEventListener('click',async ev=>{
  else if(act==='copyPrompt'){const p=cur()?.prompt||'';try{await navigator.clipboard.writeText(p);toast('已复制提示词')}catch(e){window.prompt('复制下面的提示词：',p)}}
  else if(act==='compare')openCompare([...S.picked]);
  else if(act==='clearPick'){S.picked.clear();renderMain()}
+ else if(act==='clearSamples')clearSamples();
 });
 $('#main').addEventListener('change',ev=>{const t=ev.target;
  if(t.dataset.pick){const id=t.dataset.pick;if(t.checked){if(S.picked.size>=4){t.checked=false;toast('最多同时对比 4 张');return}S.picked.add(id)}else S.picked.delete(id);renderMain()}
@@ -176,6 +178,7 @@ $('#btnNewSet').onclick=()=>openSetForm();
 $('#btnModels').onclick=()=>openModelLib();
 $('#btnExport').onclick=()=>exportAll();
 $('#btnImport').onclick=()=>$('#importFile').click();
+$('#btnHelp').onclick=()=>openHelp();
 $('#btnMenu').onclick=()=>$('#sidebar').classList.toggle('open');
 $('#btnTheme').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;pref.set('theme',t)};
 document.documentElement.dataset.theme=pref.get('theme',window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');

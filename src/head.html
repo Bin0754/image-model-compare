@@ -3,8 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>图像模型对比台</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🖼️%3C/text%3E%3C/svg%3E">
+<title>图像模型对比台 · 同一提示词多模型出图对比</title>
+<meta name="description" content="同一个提示词交给多个 AI 图像模型生成后，把出图并排对比：画质、成本（美元自动折算人民币）、速度、分辨率、默认参数、10 分制评分。纯前端、零依赖，数据只保存在你的浏览器里。">
+<meta name="theme-color" content="#07080c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="图像模型对比台">
+<meta property="og:title" content="图像模型对比台 · 同一提示词多模型出图对比">
+<meta property="og:description" content="并排对比多个 AI 图像模型的出图效果、成本、速度、分辨率与参数。纯前端，数据只存在你的浏览器里。">
+<meta property="og:url" content="https://bin0754.github.io/image-model-compare/">
+<meta property="og:image" content="https://bin0754.github.io/image-model-compare/docs/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="图像模型对比台 · Image Model Compare">
+<meta name="twitter:description" content="Compare outputs from multiple AI image models side by side — quality, cost, speed, resolution, settings. Zero-dependency, local-first.">
+<meta name="twitter:image" content="https://bin0754.github.io/image-model-compare/docs/og-image.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b197fc'/%3E%3Cstop offset='.5' stop-color='%237c6cff'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='13' y='17' width='17' height='30' rx='4' fill='%23fff' opacity='.95'/%3E%3Crect x='34' y='17' width='17' height='30' rx='4' fill='%23fff' opacity='.55'/%3E%3C/svg%3E">
 <style>
 /*CSS*/
 </style>
@@ -18,6 +33,7 @@
   <button id="btnModels" class="btn">📚 <span class="lbl-txt">模型库</span></button>
   <button id="btnExport" class="btn" title="导出全部数据（含图片）为一个 JSON 文件">⬇ <span class="lbl-txt">导出</span></button>
   <button id="btnImport" class="btn" title="从导出的 JSON 文件导入">⬆ <span class="lbl-txt">导入</span></button>
+  <button id="btnHelp" class="btn" title="使用帮助">？<span class="lbl-txt">使用帮助</span></button>
   <button id="btnTheme" class="icon-btn" title="切换深色 / 浅色">◐</button>
 </header>
 <div class="layout">
@@ -25,7 +41,7 @@
     <div class="side-title">对比组</div>
     <input id="search" type="search" placeholder="搜索提示词 / 标签 / 模型…">
     <div id="setList"></div>
-    <div class="hint" id="storageHint"></div>
+    <div class="side-foot"><div class="hint" id="storageHint"></div><div class="hint">🔒 数据只保存在本浏览器，不会上传 · <a href="https://github.com/Bin0754/image-model-compare" target="_blank" rel="noopener">GitHub 开源</a></div></div>
   </aside>
   <main id="main"></main>
 </div>
