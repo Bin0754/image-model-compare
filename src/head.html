@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>图像模型对比台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🖼️%3C/text%3E%3C/svg%3E">
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<header class="top">
+  <button id="btnMenu" class="icon-btn only-mobile" title="对比组列表">☰</button>
+  <div class="brand"><span class="logo">◆</span><span class="brand-t">图像模型对比台</span><small>同一提示词 · 多模型出图对比</small></div>
+  <div class="spacer"></div>
+  <button id="btnNewSet" class="btn primary">＋ <span class="lbl-txt">新建对比组</span></button>
+  <button id="btnModels" class="btn">📚 <span class="lbl-txt">模型库</span></button>
+  <button id="btnExport" class="btn" title="导出全部数据（含图片）为一个 JSON 文件">⬇ <span class="lbl-txt">导出</span></button>
+  <button id="btnImport" class="btn" title="从导出的 JSON 文件导入">⬆ <span class="lbl-txt">导入</span></button>
+  <button id="btnTheme" class="icon-btn" title="切换深色 / 浅色">◐</button>
+</header>
+<div class="layout">
+  <aside id="sidebar">
+    <div class="side-title">对比组</div>
+    <input id="search" type="search" placeholder="搜索提示词 / 标签 / 模型…">
+    <div id="setList"></div>
+    <div class="hint" id="storageHint"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="dropOverlay">松开鼠标，把图片添加到当前对比组</div>
+<div id="toast"></div>
+<input type="file" id="addFiles" accept="image/*" multiple hidden>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<datalist id="modelList"></datalist>
+<script>
+/*JS*/
+</script>
+</body>
+</html>
